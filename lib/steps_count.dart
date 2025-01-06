@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pedometer/pedometer.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class StepsCount extends StatefulWidget {
   const StepsCount({super.key});
@@ -9,24 +10,55 @@ class StepsCount extends StatefulWidget {
 }
 
 class _StepsCountState extends State<StepsCount> {
+  int _initialStepCount = 0;
   int _stepCount = 0;
+  String _status = "";
   late Stream<StepCount> _stepCountSream;
+  late Stream<PedestrianStatus> _pedestrianStatusStream;
 
   @override
   void initState() {
     super.initState();
     initializePedometer();
+
+    Future<void> requestPermission() async {
+      if (await Permission.activityRecognition.isDenied) {
+        await Permission.activityRecognition.request();
+      }
+    }
+
+    Future.delayed(
+      Duration.zero,
+      () async {
+        await requestPermission();
+        initializePedometer();
+      },
+    );
   }
 
   void initializePedometer() {
     _stepCountSream = Pedometer.stepCountStream;
     _stepCountSream.listen(onStepCount).onError(onStepCountError);
+    _pedestrianStatusStream = Pedometer.pedestrianStatusStream;
+    _pedestrianStatusStream
+        .listen(onPedestrianStatusChanged)
+        .onError(onPedestrianStatusError);
   }
 
   void onStepCount(StepCount event) {
     setState(() {
-      _stepCount = event.steps;
+      if (_initialStepCount == 0) {
+        _initialStepCount = event.steps; // Store the starting step count.
+      }
+
+      _stepCount = event.steps - _initialStepCount; // Calculate relative steps.
+      print('Step Count: $_stepCount');
     });
+  }
+
+
+  void onPedestrianStatusChanged(PedestrianStatus event) {
+    _status = event.status;
   }
 
   void onStepCountError(error) {
@@ -36,10 +68,31 @@ class _StepsCountState extends State<StepsCount> {
     });
   }
 
+  void onPedestrianStatusError(error) {
+    print('Error in pedestrian status stream: $error');
+    setState(() {
+      _status = "Error";
+    });
+  }
+
   void resetSteps() {
     setState(() {
+      _initialStepCount = _stepCount + _initialStepCount;
       _stepCount = 0;
     });
+  }
+
+  Future<void> initPlatformState() async {
+    // Init streams
+    _pedestrianStatusStream = await Pedometer.pedestrianStatusStream;
+    _stepCountSream = await Pedometer.stepCountStream;
+
+    // Listen to streams and handle errors
+    _stepCountSream.listen(onStepCount).onError(onStepCountError);
+
+    _pedestrianStatusStream
+        .listen(onPedestrianStatusChanged)
+        .onError(onPedestrianStatusError);
   }
 
   @override
@@ -47,7 +100,7 @@ class _StepsCountState extends State<StepsCount> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Count Your Steps123',
+          'Count Your Steps..',
           style: TextStyle(
             fontSize: 25,
             // fontFamily: DancingScript,
@@ -73,16 +126,27 @@ class _StepsCountState extends State<StepsCount> {
             Text(
               '$_stepCount',
               style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,),
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
             SizedBox(
               height: 20,
             ),
             ElevatedButton(
-                onPressed: resetSteps,
-                child: Text('Reset Counter'),),
+              onPressed: resetSteps,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  )
+                ),
+              child: Text('Reset Counter',
+              style: TextStyle(
+                color: Colors.white,
+              ),),
+            ),
           ],
         ),
       ),
