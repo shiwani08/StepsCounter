@@ -13,7 +13,7 @@ class _StepsCountState extends State<StepsCount> {
   int _initialStepCount = 0;
   int _stepCount = 0;
   String _status = "";
-  late Stream<StepCount> _stepCountSream;
+  late Stream<StepCount> _stepCountStream;
   late Stream<PedestrianStatus> _pedestrianStatusStream;
 
   @override
@@ -37,8 +37,8 @@ class _StepsCountState extends State<StepsCount> {
   }
 
   void initializePedometer() {
-    _stepCountSream = Pedometer.stepCountStream;
-    _stepCountSream.listen(onStepCount).onError(onStepCountError);
+    _stepCountStream = Pedometer.stepCountStream;
+    _stepCountStream.listen(onStepCount).onError(onStepCountError);
     _pedestrianStatusStream = Pedometer.pedestrianStatusStream;
     _pedestrianStatusStream
         .listen(onPedestrianStatusChanged)
@@ -85,10 +85,10 @@ class _StepsCountState extends State<StepsCount> {
   Future<void> initPlatformState() async {
     // Init streams
     _pedestrianStatusStream = await Pedometer.pedestrianStatusStream;
-    _stepCountSream = await Pedometer.stepCountStream;
+    _stepCountStream = await Pedometer.stepCountStream;
 
     // Listen to streams and handle errors
-    _stepCountSream.listen(onStepCount).onError(onStepCountError);
+    _stepCountStream.listen(onStepCount).onError(onStepCountError);
 
     _pedestrianStatusStream
         .listen(onPedestrianStatusChanged)
